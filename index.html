@@ -125,6 +125,16 @@
       font-size: 1.08rem;
       font-weight: 700;
     }
+    .exam-attendance {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      max-width: 620px;
+      margin: 16px auto 0;
+      padding: 19px;
+      border-radius: 16px;
+      background: #f7f9fd;
+    }
 
     .bell-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 25px 0 30px; }
     .bell-button {
@@ -224,8 +234,11 @@
       .schedule-item { grid-template-columns: 1fr auto; }
       .schedule-time { grid-column: 1; grid-row: 2; }
       .schedule-item .danger-button { grid-column: 2; grid-row: 1 / span 2; }
-      .exam-countdown, .duration-settings { gap: 10px; padding: 14px; }
+      .exam-countdown, .exam-attendance, .duration-settings { gap: 10px; padding: 14px; }
       .timer-actions button { min-width: 42%; }
+    }
+    @media (max-width: 420px) {
+      .exam-attendance { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -260,6 +273,20 @@
           <input id="exam-time" type="time" value="09:00">
         </div>
         <div class="countdown-result" id="exam-countdown" aria-live="polite">選擇考試日期以開始倒數</div>
+      </div>
+      <div class="exam-attendance" aria-label="考試人數">
+        <div class="field">
+          <label for="exam-expected">應到人數</label>
+          <input id="exam-expected" type="number" min="0" step="1" inputmode="numeric" placeholder="請輸入">
+        </div>
+        <div class="field">
+          <label for="exam-attended">實到人數</label>
+          <input id="exam-attended" type="number" min="0" step="1" inputmode="numeric" placeholder="請輸入">
+        </div>
+        <div class="field">
+          <label for="exam-absent">缺考人數</label>
+          <input id="exam-absent" type="number" min="0" step="1" inputmode="numeric" placeholder="請輸入">
+        </div>
       </div>
     </section>
 
@@ -367,6 +394,32 @@
     const examDateInput = $("#exam-date");
     const examTimeInput = $("#exam-time");
     const examCountdown = $("#exam-countdown");
+    const attendanceInputs = ["#exam-expected", "#exam-attended", "#exam-absent"].map((selector) => $(selector));
+
+    try {
+      const savedAttendance = JSON.parse(localStorage.getItem("examAttendance") || "{}");
+      attendanceInputs.forEach((input) => {
+        const value = savedAttendance[input.id];
+        if (Number.isInteger(value) && value >= 0) input.value = String(value);
+      });
+    } catch (error) {
+      console.error("讀取考試人數失敗：", error);
+    }
+
+    attendanceInputs.forEach((input) => {
+      input.addEventListener("input", () => {
+        if (input.value !== "" && (!Number.isInteger(Number(input.value)) || Number(input.value) < 0)) {
+          input.setCustomValidity("請輸入 0 或正整數。");
+        } else {
+          input.setCustomValidity("");
+        }
+        const attendance = Object.fromEntries(attendanceInputs.map((field) => [
+          field.id,
+          field.value === "" ? null : Number(field.value)
+        ]));
+        localStorage.setItem("examAttendance", JSON.stringify(attendance));
+      });
+    });
 
     function updateExamClock() {
       const now = new Date();
